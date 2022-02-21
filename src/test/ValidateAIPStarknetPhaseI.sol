@@ -84,9 +84,19 @@ contract ValidateAIPStarknetPhaseI is BaseTest {
 
     function setUp() public {}
 
-    function testProposal() public {
+    /// @dev First deploys a fresh payload, then tests everything using it
+    function testProposalPrePayload() public {
         address payload = address(new PayloadAaveStarknetPhaseI());
+        _testProposal(payload);
+    }
 
+    /// @dev Uses an already deployed payload on the target network
+    function testProposalPostPayload() public {
+        address payload = 0x4E76e1d71806aaE6Ccaac0FC67C3aa74cb245277;
+        _testProposal(payload);
+    }
+
+    function _testProposal(address payload) internal {
         address[] memory targets = new address[](1);
         targets[0] = payload;
         uint256[] memory values = new uint256[](1);
