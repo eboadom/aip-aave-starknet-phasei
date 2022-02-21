@@ -171,7 +171,7 @@ library LibPropConstants {
     uint256 internal constant ETH_AMOUNT = 3 ether;
 
     address internal constant FUNDS_RECIPIENT =
-        0x4437F8Bd8387501DdBd4565E1115118564622B4A; // TODO CHANGE!!!!!!!!
+        0xB85fa70cf9aB580580D437BdEA785b71631a8A7c;
 }
 
 contract PayloadAaveStarknetPhaseI {

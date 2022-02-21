@@ -192,10 +192,10 @@ contract ValidateAIPStarknetPhaseI is BaseTest {
         );
         controllerOfCollector.transfer(LibPropConstants.AUSDC, address(1), 666);
         require(
-            (LibPropConstants.AUSDC.balanceOf(address(1)) ==
-                balanceMockRecipientBefore + 666) ||
-                (LibPropConstants.AUSDC.balanceOf(address(1)) ==
-                    balanceMockRecipientBefore + 666 + 1), // Contemplating potential rounding issues of 1 wei
+            _almostEqual(
+                LibPropConstants.AUSDC.balanceOf(address(1)),
+                balanceMockRecipientBefore + 666
+            ),
             "NEW_CONTROLLER_TESTS : INVALID_POST_TRANSFER_BALANCE"
         );
 
@@ -250,8 +250,10 @@ contract ValidateAIPStarknetPhaseI is BaseTest {
         );
         collectorProxy.transfer(LibPropConstants.AUSDC, address(1), 666);
         require(
-            LibPropConstants.AUSDC.balanceOf(address(1)) ==
-                balanceMockRecipientBefore + 666,
+            _almostEqual(
+                LibPropConstants.AUSDC.balanceOf(address(1)),
+                balanceMockRecipientBefore + 666
+            ),
             "NEW_COLLECTOR_TESTS : INVALID_POST_TRANSFER_BALANCE"
         );
 
@@ -279,5 +281,14 @@ contract ValidateAIPStarknetPhaseI is BaseTest {
         vm.stopPrank();
 
         return controllerOfCollector;
+    }
+
+    /// @dev To contemplate +1/-1 precision issues when rounding, mainly on aTokens
+    function _almostEqual(uint256 a, uint256 b) internal pure returns (bool) {
+        if (b == 0) {
+            return (a == b) || (a == (b + 1));
+        } else {
+            return (a == b) || (a == (b + 1)) || (a == (b - 1));
+        }
     }
 }
