@@ -86,17 +86,101 @@ contract ValidateAIPStarknetPhaseI is BaseTest {
 
     /// @dev First deploys a fresh payload, then tests everything using it
     function testProposalPrePayload() public {
-        address payload = address(new PayloadAaveStarknetPhaseI());
-        _testProposal(payload);
+        // Block of proposal creation on Ethereum mainnet
+        if (block.number < 14255778) {
+            IAaveGov.SPropCreateParams memory proposalParams = _buildProposal(
+                address(new PayloadAaveStarknetPhaseI())
+            );
+
+            uint256 proposalId = _createProposal(proposalParams);
+
+            uint256 recipientUsdcBefore = LibPropConstants.USDC.balanceOf(
+                LibPropConstants.FUNDS_RECIPIENT
+            );
+            uint256 recipientWethBefore = LibPropConstants.WETH.balanceOf(
+                LibPropConstants.FUNDS_RECIPIENT
+            );
+
+            _passVoteAndQueue(proposalId, AAVE_TREASURY);
+            _executeProposal(proposalId, AAVE_TREASURY);
+            _validatePhaseIFunds(recipientUsdcBefore, recipientWethBefore);
+            address newControllerOfCollector = _validateNewCollector();
+            _validateNewControllerOfCollector(
+                ICollector(newControllerOfCollector)
+            );
+        }
     }
 
     /// @dev Uses an already deployed payload on the target network
     function testProposalPostPayload() public {
-        address payload = 0x4E76e1d71806aaE6Ccaac0FC67C3aa74cb245277;
-        _testProposal(payload);
+        if (block.number < 14255778) {
+            // Block of proposal creation on Ethereum mainnet
+            IAaveGov.SPropCreateParams memory proposalParams = _buildProposal(
+                0x4E76e1d71806aaE6Ccaac0FC67C3aa74cb245277
+            );
+
+            uint256 proposalId = _createProposal(proposalParams);
+
+            uint256 recipientUsdcBefore = LibPropConstants.USDC.balanceOf(
+                LibPropConstants.FUNDS_RECIPIENT
+            );
+            uint256 recipientWethBefore = LibPropConstants.WETH.balanceOf(
+                LibPropConstants.FUNDS_RECIPIENT
+            );
+            _passVoteAndQueue(proposalId, AAVE_TREASURY);
+            _executeProposal(proposalId, AAVE_TREASURY);
+            _validatePhaseIFunds(recipientUsdcBefore, recipientWethBefore);
+            address newControllerOfCollector = _validateNewCollector();
+            _validateNewControllerOfCollector(
+                ICollector(newControllerOfCollector)
+            );
+        }
     }
 
-    function _testProposal(address payload) internal {
+    function testProposalVoting() public {
+        // Voting range on Ethereum mainnet
+        if (block.number > 14255778 && block.number < 14275325) {
+            uint256 proposalId = 61;
+            uint256 recipientUsdcBefore = LibPropConstants.USDC.balanceOf(
+                LibPropConstants.FUNDS_RECIPIENT
+            );
+            uint256 recipientWethBefore = LibPropConstants.WETH.balanceOf(
+                LibPropConstants.FUNDS_RECIPIENT
+            );
+            _passVoteAndQueue(proposalId, AAVE_TREASURY);
+            _executeProposal(proposalId, AAVE_TREASURY);
+            _validatePhaseIFunds(recipientUsdcBefore, recipientWethBefore);
+            address newControllerOfCollector = _validateNewCollector();
+            _validateNewControllerOfCollector(
+                ICollector(newControllerOfCollector)
+            );
+        }
+    }
+
+    function testProposalQueued() public {
+        if (block.number > 14275325) {  // TODO add execution block once available
+            // Block when the proposal has been queued on Ethereum mainnet
+            uint256 proposalId = 61;
+            uint256 recipientUsdcBefore = LibPropConstants.USDC.balanceOf(
+                LibPropConstants.FUNDS_RECIPIENT
+            );
+            uint256 recipientWethBefore = LibPropConstants.WETH.balanceOf(
+                LibPropConstants.FUNDS_RECIPIENT
+            );
+            _executeProposal(proposalId, AAVE_TREASURY);
+            _validatePhaseIFunds(recipientUsdcBefore, recipientWethBefore);
+            address newControllerOfCollector = _validateNewCollector();
+            _validateNewControllerOfCollector(
+                ICollector(newControllerOfCollector)
+            );
+        }
+    }
+
+    function _buildProposal(address payload)
+        internal
+        view
+        returns (IAaveGov.SPropCreateParams memory)
+    {
         address[] memory targets = new address[](1);
         targets[0] = payload;
         uint256[] memory values = new uint256[](1);
@@ -108,7 +192,7 @@ contract ValidateAIPStarknetPhaseI is BaseTest {
         bool[] memory withDelegatecalls = new bool[](1);
         withDelegatecalls[0] = true;
 
-        uint256 proposalId = _createProposal(
+        return
             IAaveGov.SPropCreateParams({
                 executor: SHORT_EXECUTOR,
                 targets: targets,
@@ -117,31 +201,7 @@ contract ValidateAIPStarknetPhaseI is BaseTest {
                 calldatas: calldatas,
                 withDelegatecalls: withDelegatecalls,
                 ipfsHash: bytes32(0)
-            })
-        );
-
-        uint256 recipientUsdcBefore = LibPropConstants.USDC.balanceOf(
-            LibPropConstants.FUNDS_RECIPIENT
-        );
-        uint256 recipientWethBefore = LibPropConstants.WETH.balanceOf(
-            LibPropConstants.FUNDS_RECIPIENT
-        );
-
-        vm.deal(AAVE_TREASURY, 1 ether);
-        vm.startPrank(AAVE_TREASURY);
-        vm.roll(block.number + 1);
-        GOV.submitVote(proposalId, true);
-        uint256 endBlock = GOV.getProposalById(proposalId).endBlock;
-        vm.roll(endBlock + 1);
-        GOV.queue(proposalId);
-        uint256 executionTime = GOV.getProposalById(proposalId).executionTime;
-        vm.warp(executionTime + 1);
-        GOV.execute(proposalId);
-        vm.stopPrank();
-
-        _validatePhaseIFunds(recipientUsdcBefore, recipientWethBefore);
-        address newControllerOfCollector = _validateNewCollector();
-        _validateNewControllerOfCollector(ICollector(newControllerOfCollector));
+            });
     }
 
     function _createProposal(IAaveGov.SPropCreateParams memory params)
@@ -161,6 +221,31 @@ contract ValidateAIPStarknetPhaseI is BaseTest {
         );
         vm.stopPrank();
         return proposalId;
+    }
+
+    function _passVoteAndQueue(uint256 proposalId, address whaleVoter)
+        internal
+    {
+        vm.deal(whaleVoter, 1 ether);
+        vm.startPrank(whaleVoter);
+
+        vm.roll(block.number + 1);
+        GOV.submitVote(proposalId, true);
+        uint256 endBlock = GOV.getProposalById(proposalId).endBlock;
+        vm.roll(endBlock + 1);
+        GOV.queue(proposalId);
+        vm.stopPrank();
+    }
+
+    function _executeProposal(uint256 proposalId, address executorOfProposal)
+        internal
+    {
+        vm.deal(executorOfProposal, 1 ether);
+        vm.startPrank(executorOfProposal);
+        uint256 executionTime = GOV.getProposalById(proposalId).executionTime;
+        vm.warp(executionTime + 1);
+        GOV.execute(proposalId);
+        vm.stopPrank();
     }
 
     function _validatePhaseIFunds(

@@ -9,5 +9,6 @@ update:; forge update
 build  :; forge build
 test   :; forge test --rpc-url=${ETH_RPC_URL}
 trace   :; forge test -vvv --rpc-url=${ETH_RPC_URL}
-clean  :; forge clean
-snapshot :; forge snapshot
+test-pre-creation  :; forge test --rpc-url=${ETH_RPC_URL} --fork-block-number=14255777
+test-voting   :; forge test --rpc-url=${ETH_RPC_URL} --fork-block-number=14255779
+test-queued   :; forge test -vvv --rpc-url=${ETH_RPC_URL} --fork-block-number=14275700
